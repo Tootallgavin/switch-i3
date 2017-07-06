@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 extern crate nanomsg;
 extern crate clap;
 use clap::{App, SubCommand};
