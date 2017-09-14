@@ -6,10 +6,9 @@ mod sockethandler;
 use std::thread;
 use std::sync::{Arc, Mutex};
 
-
 fn set_up_watch() {
     println!("setup");
-    let workspace_list = Arc::new(Mutex::new(focuswatcher::WorkSpaceList::build()));
+    let workspace_list = Arc::new(Mutex::new(focuswatcher::structures::WorkSpaceList::build()));
     let c = workspace_list.clone();
     let d = workspace_list.clone();
 

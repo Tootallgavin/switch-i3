@@ -1,7 +1,7 @@
 extern crate nanomsg;
 use nanomsg::{Socket, Protocol, PollRequest, PollInOut};
 use std::io::{Read, Write};
-use focuswatcher::WorkSpaceList;
+use focuswatcher::structures::WorkSpaceList;
 use std::sync::Mutex;
 
 static SOCKET_FILE: &str = "ipc:///tmp/switch-it.ipc";
