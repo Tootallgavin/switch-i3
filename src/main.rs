@@ -20,12 +20,15 @@ fn set_up_watch() {
 }
 
 fn main() {
+  println!("max: {:?}", <i32>::max_value());
     let matches = App::new("switch-it")
         .version("1.0")
         .author("Gavin Stringfellow")
         .about("focus on different windows")
-        .args_from_usage("-w 'Switches to last focused window in last focused workspace'
-                          -c 'Switches to last focused window in current container'")
+        .args_from_usage(
+            "-w 'Switches to last focused window in last focused workspace'
+                          -c 'Switches to last focused window in current container'",
+        )
         .subcommand(SubCommand::with_name("watch"))
         .get_matches();
     // focuswatcher::find_window_workspace_from_i3(33105776);

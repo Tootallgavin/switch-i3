@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["g <somewhere@outthere.com>"]
 
 [dependencies]
-i3ipc = "0.4.2"
+i3ipc = {git = "https://github.com/tmerr/i3ipc-rs.git"}
 nanomsg = "0.6.1"
 clap = "~2.19.0"

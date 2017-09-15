@@ -2,7 +2,7 @@ use super::structures::*;
 use std::collections::hash_map::Iter;
 extern crate i3ipc;
 
-pub fn find_window(iter: Iter<i32, WorkSpace>, window_id: &i32) -> Option<(i32, usize)> {
+pub fn find_window(iter: Iter<i64, WorkSpace>, window_id: &i64) -> Option<(i64, usize)> {
     for (ws_id, ws) in iter {
         let mut count: usize = 0;
         for w in &ws.window_list {
@@ -15,17 +15,26 @@ pub fn find_window(iter: Iter<i32, WorkSpace>, window_id: &i32) -> Option<(i32, 
     return None;
 }
 
+fn get_tree() -> i3ipc::reply::Node {
+    if cfg!(test) {
+        return i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
+    } else {
+        return i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
+    }
+}
+
 pub fn build_lists(wsl: &mut WorkSpaceList) {
-    let rootnode = i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
-    walk_tree(wsl, rootnode, 0);
+    let rootnode = get_tree();
+    println!("{:?}",rootnode);
+    walk_tree_bl(wsl, rootnode, 0);
 }
 
-fn resolve_name(id: i32) -> Option<String> {
-    let rootnode = i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
-    return wt(rootnode, id);
+fn resolve_name(id: i64) -> Option<String> {
+    let rootnode = get_tree();
+    return walk_tree_rn(rootnode, id);
 }
 
-fn wt(node: i3ipc::reply::Node, id: i32) -> Option<String> {
+fn walk_tree_rn(node: i3ipc::reply::Node, id: i64) -> Option<String> {
     let mut name: Option<String> = None;
     for node in node.nodes {
         if name.is_some() {
@@ -33,13 +42,13 @@ fn wt(node: i3ipc::reply::Node, id: i32) -> Option<String> {
         }
         match node.nodetype {
             i3ipc::reply::NodeType::Output => {
-                name = wt(node, id);
+                name = walk_tree_rn(node, id);
             }
             i3ipc::reply::NodeType::Workspace => {
                 if id == node.id {
                     return node.name;
                 }
-                name = wt(node, id);
+                name = walk_tree_rn(node, id);
             }
             i3ipc::reply::NodeType::Con => {
                 match node.window {
@@ -49,7 +58,7 @@ fn wt(node: i3ipc::reply::Node, id: i32) -> Option<String> {
                         }
                     }
                     None => {
-                        return wt(node, id);
+                        return walk_tree_rn(node, id);
                     }
                 }
             }
@@ -62,16 +71,16 @@ fn wt(node: i3ipc::reply::Node, id: i32) -> Option<String> {
     return name;
 }
 
-fn walk_tree(wsl: &mut WorkSpaceList, rootnode: i3ipc::reply::Node, workspace_id: i32) {
+fn walk_tree_bl(wsl: &mut WorkSpaceList, rootnode: i3ipc::reply::Node, workspace_id: i64) {
     for node in rootnode.nodes {
         match node.nodetype {
             i3ipc::reply::NodeType::Output => {
-                walk_tree(wsl, node, workspace_id);
+                walk_tree_bl(wsl, node, workspace_id);
             }
             i3ipc::reply::NodeType::Workspace => {
                 let c = node.id;
                 wsl.workspace_on_init(node.id);
-                walk_tree(wsl, node, c);
+                walk_tree_bl(wsl, node, c);
             }
             i3ipc::reply::NodeType::Con => {
                 match node.window {
@@ -79,7 +88,7 @@ fn walk_tree(wsl: &mut WorkSpaceList, rootnode: i3ipc::reply::Node, workspace_id
                         wsl.window_on_init(node.id, Some(workspace_id));
                     }
                     None => {
-                        walk_tree(wsl, node, workspace_id);
+                        walk_tree_bl(wsl, node, workspace_id);
                     }
                 }
             }
@@ -91,16 +100,17 @@ fn walk_tree(wsl: &mut WorkSpaceList, rootnode: i3ipc::reply::Node, workspace_id
     }
 }
 
-pub fn find_window_workspace_from_i3(window_id: i32) -> i32 {
-    let rootnode = i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
+pub fn find_window_workspace_from_i3(window_id: i64) -> i64 {
+    let rootnode = get_tree();
     // println!("{:?}", rootnode);
     return walk_to_resolve_windows_workspace(rootnode, window_id, 0);
 }
 
-fn walk_to_resolve_windows_workspace(rootnode: i3ipc::reply::Node,
-                                     window_id: i32,
-                                     current_workspace_id: i32)
-                                     -> i32 {
+fn walk_to_resolve_windows_workspace(
+    rootnode: i3ipc::reply::Node,
+    window_id: i64,
+    current_workspace_id: i64,
+) -> i64 {
     let mut found = 0;
     for node in rootnode.nodes {
         if found != 0 {
@@ -123,9 +133,11 @@ fn walk_to_resolve_windows_workspace(rootnode: i3ipc::reply::Node,
                         }
                     }
                     None => {
-                        return walk_to_resolve_windows_workspace(node,
-                                                                 window_id,
-                                                                 current_workspace_id);
+                        return walk_to_resolve_windows_workspace(
+                            node,
+                            window_id,
+                            current_workspace_id,
+                        );
                     }
                 }
             }

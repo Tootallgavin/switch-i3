@@ -9,9 +9,10 @@ static SOCKET_FILE: &str = "ipc:///tmp/switch-it.ipc";
 fn on_command(command: &String, workspace_list_mute: &Mutex<WorkSpaceList>) {
     let ref wsl = workspace_list_mute.lock().unwrap();
     if command.contains("w") {
-        // or c
+        println!("switching windows");
         wsl.last_workspace()
     } else {
+        println!("switching container");
         wsl.last_container()
     }
 }
@@ -19,12 +20,16 @@ fn on_command(command: &String, workspace_list_mute: &Mutex<WorkSpaceList>) {
 
 pub fn receiver(workspace_list: &Mutex<WorkSpaceList>) {
     let mut socket = Socket::new(Protocol::Pull).unwrap();
-    let _ = socket.bind(&SOCKET_FILE); // let _ = means we don't need any return value stored somewere
+    let _ = socket.bind(&SOCKET_FILE);
+    // let _ = means we don't need any return value stored somewere
     let mut request = String::new();
 
     loop {
         match socket.read_to_string(&mut request) {
-            Ok(_) => on_command(&request, workspace_list),
+            Ok(_) => {
+              println!("received '{}'", request);
+              on_command(&request, workspace_list);
+            },
             Err(err) => {
                 println!("failed '{}'", err);
                 break;
