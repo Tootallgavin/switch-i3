@@ -25,7 +25,7 @@ fn get_tree() -> i3ipc::reply::Node {
 
 pub fn build_lists(wsl: &mut WorkSpaceList) {
     let rootnode = get_tree();
-    println!("{:?}",rootnode);
+    println!("{:?}", rootnode);
     walk_tree_bl(wsl, rootnode, 0);
 }
 

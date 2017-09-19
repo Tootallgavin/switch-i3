@@ -18,13 +18,13 @@ impl WorkSpaceList {
             workspaces: HashMap::new(),
         };
         build_lists(&mut wsl);
-        println!("{:?}",wsl);
+        println!("{:?}", wsl);
         return wsl;
     }
 
     pub fn last_container(&self) {
         let current_ws = self.workspaces.get(&self.workspace_list[0]).unwrap();
-        println!("{:?}",current_ws);
+        println!("{:?}", current_ws);
         if current_ws.window_list.len() > 2 {
             let window_id = current_ws.window_list[1];
             send_command(window_id);
@@ -97,7 +97,7 @@ impl WorkSpaceList {
                 };
             }
             None => {
-                println!("Ha2");
+                println!("Ha2"); //then find_it!
             }
         }
     }
@@ -158,7 +158,7 @@ impl Eq for WorkSpace {}
 
 fn send_command(window_id: i64) {
     let ref command = format!("[con_id=\"{}\"] focus", window_id);
-    println!("{:?}",command);
+    println!("{:?}", command);
     let result = i3ipc::I3Connection::connect()
         .unwrap()
         .command(command)

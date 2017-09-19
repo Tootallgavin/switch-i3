@@ -1,63 +1,121 @@
 extern crate nanomsg;
+extern crate std;
 use nanomsg::{Socket, Protocol, PollRequest, PollInOut};
 use std::io::{Read, Write};
 use focuswatcher::structures::WorkSpaceList;
 use std::sync::Mutex;
+extern crate tokio_core;
+extern crate tokio_uds;
+extern crate i3ipc;
+use self::i3ipc::I3EventListener;
+use self::i3ipc::EventIterator;
+use self::i3ipc::Subscription;
+use self::i3ipc::event::Event;
+use std::fs;
+use std::str;
+use std::io;
+extern crate futures;
+use self::futures::*;
 
-static SOCKET_FILE: &str = "ipc:///tmp/switch-it.ipc";
+use self::futures::{Future, Stream};
+use self::tokio_core::io::read_to_end;
+use self::tokio_core::reactor::Core;
+use self::tokio_uds::{UnixListener, UnixStream};
+use self::futures::future::Executor;
+use std::os::unix::net::UnixStream as US;
 
-fn on_command(command: &String, workspace_list_mute: &Mutex<WorkSpaceList>) {
-    let ref wsl = workspace_list_mute.lock().unwrap();
+use focuswatcher::structures;
+use focuswatcher;
+use std::rc::Rc;
+use std::sync::{Arc};
+
+use std::cell::RefCell;
+static SOCKET_FILE: &str = "/tmp/switch-it.ipc";
+
+fn on_command(command: &String, workspace_list: &mut structures::WorkSpaceList) {
     if command.contains("w") {
         println!("switching windows");
-        wsl.last_workspace()
+        workspace_list.last_workspace()
     } else {
         println!("switching container");
-        wsl.last_container()
+        workspace_list.last_container()
     }
 }
 
+pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
+    let mut core = Core::new().unwrap();
 
-pub fn receiver(workspace_list: &Mutex<WorkSpaceList>) {
-    let mut socket = Socket::new(Protocol::Pull).unwrap();
-    let _ = socket.bind(&SOCKET_FILE);
-    // let _ = means we don't need any return value stored somewere
-    let mut request = String::new();
+    let handle = core.handle();
 
-    loop {
-        match socket.read_to_string(&mut request) {
-            Ok(_) => {
-              println!("received '{}'", request);
-              on_command(&request, workspace_list);
-            },
-            Err(err) => {
-                println!("failed '{}'", err);
-                break;
-            }
+    let mut listener = I3EventListener::connect().unwrap();
+
+
+    // subscribe to a couple events.
+    let subs = [Subscription::Workspace, Subscription::Window];
+    listener.subscribe(&subs).unwrap();
+    let l = &mut listener.listen();
+
+    let mut stream = stream::iter_ok::<_, std::io::Error>(l);
+
+    let server = stream.for_each(|event| {
+        let mut wsl = workspace_list.lock().unwrap();
+        focuswatcher::on_i3_event(&mut wsl,event.unwrap());
+        println!("yep");
+        Ok(())
+    });
+    core.run(server);
+
+}
+
+
+pub fn receiver(workspace_list:  &Mutex<WorkSpaceList>) {
+    let mut core = Core::new().unwrap();
+
+    let handle = core.handle();
+    // let data = Rc::new(RefCell::new(workspace_list));
+
+    // let w = Box::new(workspace_list);
+    let listener = match UnixListener::bind(&SOCKET_FILE, &handle) {
+        Ok(m) => m,
+        Err(_) => {
+            fs::remove_file(&SOCKET_FILE).unwrap();
+            UnixListener::bind(&SOCKET_FILE, &handle).unwrap()
         }
-        request.clear();
-    }
-}
+    };
 
-fn can_write_to_pipe(socket: &Socket) -> bool {
-    let mut pollfd = [socket.new_pollfd(PollInOut::Out)];
-    let mut poll_req = PollRequest::new(&mut pollfd);
-    let _ = Socket::poll(&mut poll_req, 10);
-    return poll_req.get_fds()[0].can_write();
+    let task = listener.incoming().for_each(|(socket, _)|  {
+        let buf = Vec::new();
+        // let w = workspace_list.clone();
+        // let c = Arc::new(w);
+        // // let g = c.clone();
+        let reader = read_to_end(socket, buf)
+            .map( move|(_, _buf)| {
+                let command = String::from_utf8(_buf).unwrap();
+                // workspace_list;
+                println!("incoming: {:?}", command);
+                // Ok(())
+            })
+            .then(|_| Ok(()));
+            // .then(|_| {
+            //     // let mut wsl = workspace_list.clone().lock().unwrap();
+            //     // w?\
+            //     // on_command(&command, &mut wsl);
+            //
+            //     Ok(())});
+
+        handle.spawn(reader);
+        Ok(())
+    });
+    // .then(|_|{
+    //
+    // });
+
+    core.run(task).unwrap();
 }
 
 pub fn send(msg: String) {
-    let mut socket = Socket::new(Protocol::Push).unwrap();
-    socket.connect(&SOCKET_FILE).unwrap();
+    print!("{:?}", msg);
+    let mut writer = US::connect(&SOCKET_FILE).unwrap();
 
-    if can_write_to_pipe(&socket) {
-        match socket.write_all(&msg.as_bytes()) {
-            Ok(_) => println!("SENDING '{}'", &msg),
-            Err(err) => {
-                println!("failed '{}'", err);
-            }
-        }
-    } else {
-        println!("nope");
-    }
+    writer.write(msg.as_bytes()).unwrap();
 }

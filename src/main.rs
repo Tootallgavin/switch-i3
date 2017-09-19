@@ -5,22 +5,25 @@ mod focuswatcher;
 mod sockethandler;
 use std::thread;
 use std::sync::{Arc, Mutex};
-
-fn set_up_watch() {
+use std::rc::Rc;
+use std::cell::RefCell;
+fn set_up_watch<'a>() {
     println!("setup");
+    // sockethandler::receiver();
     let workspace_list = Arc::new(Mutex::new(focuswatcher::structures::WorkSpaceList::build()));
     let c = workspace_list.clone();
     let d = workspace_list.clone();
 
-    let fhandler = thread::spawn(move || focuswatcher::watch(c.as_ref()));
+    let fhandler = thread::spawn(move || sockethandler::watch(c.as_ref()));
     let rhandler = thread::spawn(move || sockethandler::receiver(d.as_ref()));
+    // let rhandler = thread::spawn(move || sockethandler::receiver(&Rc::new(RefCell::new(d.as_ref()))));
 
     fhandler.join().unwrap();
     rhandler.join().unwrap();
 }
 
 fn main() {
-  println!("max: {:?}", <i32>::max_value());
+    println!("max: {:?}", <i32>::max_value());
     let matches = App::new("switch-it")
         .version("1.0")
         .author("Gavin Stringfellow")

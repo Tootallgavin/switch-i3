@@ -1,9 +1,16 @@
 [package]
+authors = ["g <somewhere@outthere.com>"]
 name = "switch-it"
 version = "0.1.0"
-authors = ["g <somewhere@outthere.com>"]
 
 [dependencies]
-i3ipc = {git = "https://github.com/tmerr/i3ipc-rs.git"}
-nanomsg = "0.6.1"
 clap = "~2.19.0"
+futures = "0.1.15"
+nanomsg = "0.6.1"
+tokio-core = "0.1.9"
+tokio-uds = "0.1.5"
+futures-cpupool = "0.1.6"
+[dependencies.i3ipc]
+git = "https://github.com/tmerr/i3ipc-rs.git"
+[dependencies.service-fn]
+git = "https://github.com/tokio-rs/service-fn.git"
