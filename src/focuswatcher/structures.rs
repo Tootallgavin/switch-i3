@@ -18,13 +18,15 @@ impl WorkSpaceList {
             workspaces: HashMap::new(),
         };
         build_lists(&mut wsl);
-        println!("{:?}", wsl);
+        // debug!("{:?}", wsl);
+        info!("current focused {:?}", resolve_name(resolve_focused().unwrap()).unwrap());
+        wsl.window_on_focus(resolve_focused().unwrap());
         return wsl;
     }
 
     pub fn last_container(&self) {
         let current_ws = self.workspaces.get(&self.workspace_list[0]).unwrap();
-        println!("{:?}", current_ws);
+        // println!("{:?}", current_ws);
         if current_ws.window_list.len() > 2 {
             let window_id = current_ws.window_list[1];
             send_command(window_id);
@@ -34,9 +36,12 @@ impl WorkSpaceList {
     }
 
     pub fn last_workspace(&self) {
-        let current_ws = self.workspaces.get(&self.workspace_list[1]).unwrap();
-        let window_id = current_ws.window_list[0];
-        send_command(window_id);
+        println!("{:?}",self.workspace_list );
+        if self.workspace_list.len() > 2{
+            let current_ws = self.workspaces.get(&self.workspace_list[1]).unwrap();
+            let window_id = current_ws.window_list[0];
+            send_command(window_id);
+        }
     }
 
     pub fn workspace_on_focus(&mut self, current_id: i64) {
@@ -111,7 +116,7 @@ impl WorkSpaceList {
                 workspace.window_list.insert(0, window_id);
             }
             None => {
-                println!("init fail");
+                println!("window init fail");
             }
         }
     }
@@ -131,7 +136,7 @@ impl WorkSpaceList {
                 self.workspace_list.insert(1, workspace.id)
             }
             None => {
-                println!("init fail");
+                println!("container move fail");
             }
         }
     }
@@ -158,7 +163,8 @@ impl Eq for WorkSpace {}
 
 fn send_command(window_id: i64) {
     let ref command = format!("[con_id=\"{}\"] focus", window_id);
-    println!("{:?}", command);
+    // println!("{:?}", command);
+    info!("Switching to container {:?}: {:?}", window_id, resolve_name(window_id));
     let result = i3ipc::I3Connection::connect()
         .unwrap()
         .command(command)

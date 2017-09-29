@@ -1,5 +1,8 @@
 extern crate nanomsg;
 extern crate clap;
+#[macro_use] extern crate log;
+extern crate env_logger;
+
 use clap::{App, SubCommand};
 mod focuswatcher;
 mod sockethandler;
@@ -8,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::rc::Rc;
 use std::cell::RefCell;
 fn set_up_watch<'a>() {
-    println!("setup");
+    info!("setup");
     // sockethandler::receiver();
     let workspace_list = Arc::new(Mutex::new(focuswatcher::structures::WorkSpaceList::build()));
     let c = workspace_list.clone();
@@ -23,6 +26,8 @@ fn set_up_watch<'a>() {
 }
 
 fn main() {
+    env_logger::init().unwrap();
+
     println!("max: {:?}", <i32>::max_value());
     let matches = App::new("switch-it")
         .version("1.0")

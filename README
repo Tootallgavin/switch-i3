@@ -1,1 +1,8 @@
-A Demon to help switch windows in i3wm
+# Switch-i3
+A daemon to help switch windows in i3wm
+pronouced switch-it
+
+### Features
+- Switch to previous window in current workspace
+- Switch to previous window in previous workspace
+ 

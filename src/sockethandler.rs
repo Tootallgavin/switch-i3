@@ -16,14 +16,15 @@ use std::str;
 use std::io;
 extern crate futures;
 use self::futures::*;
+use std::thread;
 
 use self::futures::{Future, Stream};
 use self::tokio_core::io::read_to_end;
 use self::tokio_core::reactor::Core;
-use self::tokio_uds::{UnixListener, UnixStream};
+// use self::tokio_uds::{UnixListener, UnixStream};
 use self::futures::future::Executor;
 use std::os::unix::net::UnixStream as US;
-
+use std::os::unix::net::UnixListener;
 use focuswatcher::structures;
 use focuswatcher;
 use std::rc::Rc;
@@ -34,10 +35,10 @@ static SOCKET_FILE: &str = "/tmp/switch-it.ipc";
 
 fn on_command(command: &String, workspace_list: &mut structures::WorkSpaceList) {
     if command.contains("w") {
-        println!("switching windows");
+        // println!("switching windows");
         workspace_list.last_workspace()
     } else {
-        println!("switching container");
+        // println!("switching container");
         workspace_list.last_container()
     }
 }
@@ -60,7 +61,6 @@ pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
     let server = stream.for_each(|event| {
         let mut wsl = workspace_list.lock().unwrap();
         focuswatcher::on_i3_event(&mut wsl,event.unwrap());
-        println!("yep");
         Ok(())
     });
     core.run(server);
@@ -69,48 +69,28 @@ pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
 
 
 pub fn receiver(workspace_list:  &Mutex<WorkSpaceList>) {
-    let mut core = Core::new().unwrap();
 
-    let handle = core.handle();
-    // let data = Rc::new(RefCell::new(workspace_list));
+    let listener = UnixListener::bind(&SOCKET_FILE)
+        .unwrap_or_else(|_|fs::remove_file(&SOCKET_FILE)
+                            .and(UnixListener::bind(&SOCKET_FILE)).unwrap());
 
-    // let w = Box::new(workspace_list);
-    let listener = match UnixListener::bind(&SOCKET_FILE, &handle) {
-        Ok(m) => m,
-        Err(_) => {
-            fs::remove_file(&SOCKET_FILE).unwrap();
-            UnixListener::bind(&SOCKET_FILE, &handle).unwrap()
+    // accept connections and process them, spawning a new thread for each one
+    for stream in listener.incoming() {
+        match stream {
+            Ok(mut stream) => {
+                /* connection succeeded */
+                let mut command: String = String::new();
+                stream.read_to_string(&mut command).unwrap();
+
+                let mut wsl= workspace_list.lock().unwrap();
+                on_command(&command,&mut wsl)
+            }
+            Err(err) => {
+                /* connection failed */
+                break;
+            }
         }
-    };
-
-    let task = listener.incoming().for_each(|(socket, _)|  {
-        let buf = Vec::new();
-        // let w = workspace_list.clone();
-        // let c = Arc::new(w);
-        // // let g = c.clone();
-        let reader = read_to_end(socket, buf)
-            .map( move|(_, _buf)| {
-                let command = String::from_utf8(_buf).unwrap();
-                // workspace_list;
-                println!("incoming: {:?}", command);
-                // Ok(())
-            })
-            .then(|_| Ok(()));
-            // .then(|_| {
-            //     // let mut wsl = workspace_list.clone().lock().unwrap();
-            //     // w?\
-            //     // on_command(&command, &mut wsl);
-            //
-            //     Ok(())});
-
-        handle.spawn(reader);
-        Ok(())
-    });
-    // .then(|_|{
-    //
-    // });
-
-    core.run(task).unwrap();
+    }
 }
 
 pub fn send(msg: String) {
