@@ -35,52 +35,6 @@ pub fn resolve_name(id: i64) -> Option<String> {
     return walk_tree_rn(rootnode, id);
 }
 
-type Bon = Box<Option<i3ipc::reply::Node>>;
-
-#[derive(Clone, Copy)]
-struct TreeWalkerHelper<'a> {
-    output:&'a i3ipc::reply::Node,
-    workspace: &'a i3ipc::reply::Node,
-    container: &'a  i3ipc::reply::Node
-}
-use focuswatcher::core::clone::Clone;
-fn walk_tree<'a>(node: &'a i3ipc::reply::Node,twh:&'a mut  TreeWalkerHelper, onNode: &mut Fn(i3ipc::reply::Node, TreeWalkerHelper)) {
-    // let next =  |mut node| walk_tree(node, twh, onNode);
-    let &'a mut s =  TreeWalkerHelper {output: None, workspace: None, container: None};
-    // let bn  = *node;
-    for node in node.nodes {
-        match node.nodetype {
-            i3ipc::reply::NodeType::Output => {
-                twh.output = &node;
-                walk_tree(&node, twh, onNode);
-                // (next)(twh.output);
-            }
-            i3ipc::reply::NodeType::Workspace => {
-                twh.workspace =  &node;
-                onNode(node,*twh);
-                // next(RefCell::from(node));
-            }
-            i3ipc::reply::NodeType::Con => {
-                match node.window {
-                    Some(_) => {
-                        // onNode(node,&twh);
-                        // walk_tree(node);
-                    }
-                    None => {
-                        twh.container =  &node;
-                        // onNode(node);
-                        // next(RefCell::from(node));
-                    }
-                }
-            }
-            i3ipc::reply::NodeType::FloatingCon => {
-                println!("F");
-            }
-            _ => {}
-        }
-    }
-}
-
 fn walk_tree_rn(node: i3ipc::reply::Node, id: i64) -> Option<String> {
     let mut name: Option<String> = None;
     for node in node.nodes {
