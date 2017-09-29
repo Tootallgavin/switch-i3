@@ -1,3 +1,5 @@
+#![deny(unused_imports)]
+
 extern crate nanomsg;
 extern crate clap;
 #[macro_use] extern crate log;
@@ -10,16 +12,16 @@ use std::thread;
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
 use std::cell::RefCell;
+
 fn set_up_watch<'a>() {
     info!("setup");
-    // sockethandler::receiver();
+
     let workspace_list = Arc::new(Mutex::new(focuswatcher::structures::WorkSpaceList::build()));
     let c = workspace_list.clone();
     let d = workspace_list.clone();
 
     let fhandler = thread::spawn(move || sockethandler::watch(c.as_ref()));
     let rhandler = thread::spawn(move || sockethandler::receiver(d.as_ref()));
-    // let rhandler = thread::spawn(move || sockethandler::receiver(&Rc::new(RefCell::new(d.as_ref()))));
 
     fhandler.join().unwrap();
     rhandler.join().unwrap();
@@ -39,8 +41,7 @@ fn main() {
         )
         .subcommand(SubCommand::with_name("watch"))
         .get_matches();
-    // focuswatcher::find_window_workspace_from_i3(33105776);
-    // set_up_watch();
+
     if matches.is_present("watch") {
         set_up_watch();
     } else if matches.is_present("w") {
