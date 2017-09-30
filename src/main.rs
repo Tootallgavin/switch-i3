@@ -1,23 +1,20 @@
-extern crate nanomsg;
 extern crate clap;
-use clap::{App, SubCommand};
 mod focuswatcher;
 mod sockethandler;
+use clap::{App, SubCommand};
 use std::thread;
 use std::sync::{Arc, Mutex};
 
-
 fn set_up_watch() {
-    println!("setup");
-    let workspace_list = Arc::new(Mutex::new(focuswatcher::WorkSpaceList::build()));
+    let workspace_list = Arc::new(Mutex::new(focuswatcher::structures::WorkSpaceList::build()));
     let c = workspace_list.clone();
     let d = workspace_list.clone();
 
-    let fhandler = thread::spawn(move || focuswatcher::watch(c.as_ref()));
-    let rhandler = thread::spawn(move || sockethandler::receiver(d.as_ref()));
+    let watch_handler = thread::spawn(move || sockethandler::watch(c.as_ref()));
+    let reciver_handler = thread::spawn(move || sockethandler::receiver(d.as_ref()));
 
-    fhandler.join().unwrap();
-    rhandler.join().unwrap();
+    watch_handler.join().unwrap();
+    reciver_handler.join().unwrap();
 }
 
 fn main() {
@@ -25,12 +22,13 @@ fn main() {
         .version("1.0")
         .author("Gavin Stringfellow")
         .about("focus on different windows")
-        .args_from_usage("-w 'Switches to last focused window in last focused workspace'
-                          -c 'Switches to last focused window in current container'")
+        .args_from_usage(
+            "-w 'Switches to last focused window in last focused workspace'
+                          -c 'Switches to last focused window in current container'",
+        )
         .subcommand(SubCommand::with_name("watch"))
         .get_matches();
-    // focuswatcher::find_window_workspace_from_i3(33105776);
-    // set_up_watch();
+
     if matches.is_present("watch") {
         set_up_watch();
     } else if matches.is_present("w") {

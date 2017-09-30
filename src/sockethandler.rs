@@ -1,58 +1,94 @@
 extern crate nanomsg;
-use nanomsg::{Socket, Protocol, PollRequest, PollInOut};
+extern crate std;
+extern crate futures;
+extern crate tokio_core;
+extern crate tokio_uds;
+extern crate i3ipc;
 use std::io::{Read, Write};
-use focuswatcher::WorkSpaceList;
 use std::sync::Mutex;
+use std::fs;
+use std::str;
+use std::process;
+use std::os::unix::net::UnixStream as US;
+use std::os::unix::net::UnixListener;
+use self::i3ipc::I3EventListener;
+use self::i3ipc::Subscription;
+use self::futures::Stream;
+use self::futures::stream::iter_ok;
+use self::tokio_core::reactor::Core;
+use focuswatcher::on_i3_event;
+use focuswatcher::structures::WorkSpaceList;
 
-static SOCKET_FILE: &str = "ipc:///tmp/switch-it.ipc";
+static SOCKET_FILE: &str = "/tmp/switch-it.ipc";
 
-fn on_command(command: &String, workspace_list_mute: &Mutex<WorkSpaceList>) {
-    let ref wsl = workspace_list_mute.lock().unwrap();
+fn on_command(command: &String, workspace_list: &mut WorkSpaceList) {
     if command.contains("w") {
-        // or c
-        wsl.last_workspace()
+        // println!("switching windows");
+        workspace_list.last_workspace()
     } else {
-        wsl.last_container()
+        // println!("switching container");
+        workspace_list.last_container()
     }
+}
+
+pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
+    let mut core = Core::new().unwrap();
+
+    let mut listener = I3EventListener::connect().unwrap();
+
+    // subscribe to window and workspace event.
+    let subs = [Subscription::Workspace, Subscription::Window];
+    listener.subscribe(&subs).unwrap();
+    let l = &mut listener.listen();
+
+    let stream = iter_ok::<_, std::io::Error>(l);
+
+    let server = stream.for_each(|event| {
+        let mut wsl = workspace_list.lock().unwrap();
+        on_i3_event(&mut wsl, event.unwrap());
+        Ok(())
+    });
+    core.run(server).unwrap();
 }
 
 
 pub fn receiver(workspace_list: &Mutex<WorkSpaceList>) {
-    let mut socket = Socket::new(Protocol::Pull).unwrap();
-    let _ = socket.bind(&SOCKET_FILE); // let _ = means we don't need any return value stored somewere
-    let mut request = String::new();
 
-    loop {
-        match socket.read_to_string(&mut request) {
-            Ok(_) => on_command(&request, workspace_list),
-            Err(err) => {
-                println!("failed '{}'", err);
+    let listener = UnixListener::bind(&SOCKET_FILE).unwrap_or_else(|_| {
+        fs::remove_file(&SOCKET_FILE)
+            .and(UnixListener::bind(&SOCKET_FILE))
+            .unwrap()
+    });
+
+    // accept connections and process them
+    for stream in listener.incoming() {
+        match stream {
+            Ok(mut stream) => {
+                /* connection succeeded */
+                let mut command: String = String::new();
+                stream.read_to_string(&mut command).unwrap();
+
+                let mut wsl = workspace_list.lock().unwrap();
+                on_command(&command, &mut wsl)
+            }
+            Err(_) => {
+                /* connection failed */
                 break;
             }
         }
-        request.clear();
     }
-}
-
-fn can_write_to_pipe(socket: &Socket) -> bool {
-    let mut pollfd = [socket.new_pollfd(PollInOut::Out)];
-    let mut poll_req = PollRequest::new(&mut pollfd);
-    let _ = Socket::poll(&mut poll_req, 10);
-    return poll_req.get_fds()[0].can_write();
 }
 
 pub fn send(msg: String) {
-    let mut socket = Socket::new(Protocol::Push).unwrap();
-    socket.connect(&SOCKET_FILE).unwrap();
-
-    if can_write_to_pipe(&socket) {
-        match socket.write_all(&msg.as_bytes()) {
-            Ok(_) => println!("SENDING '{}'", &msg),
-            Err(err) => {
-                println!("failed '{}'", err);
-            }
+    match US::connect(&SOCKET_FILE).and_then(|mut writer| {
+        print!("{:?}", msg);
+        writer.write(msg.as_bytes())
+    }) {
+        Ok(_) => {}
+        Err(_) => {
+            println!("Daemon not running");
+            process::exit(0x0001);
         }
-    } else {
-        println!("nope");
     }
+
 }
