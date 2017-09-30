@@ -1,7 +1,6 @@
 use super::structures::*;
 use std::collections::hash_map::Iter;
 extern crate i3ipc;
-use std::cell::RefCell;
 
 pub fn find_window(iter: Iter<i64, WorkSpace>, window_id: &i64) -> Option<(i64, usize)> {
     for (ws_id, ws) in iter {
@@ -17,16 +16,11 @@ pub fn find_window(iter: Iter<i64, WorkSpace>, window_id: &i64) -> Option<(i64, 
 }
 
 fn get_tree() -> i3ipc::reply::Node {
-    if cfg!(test) {
-        return i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
-    } else {
-        return i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
-    }
+    return i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
 }
 
 pub fn build_lists(wsl: &mut WorkSpaceList) {
     let rootnode = get_tree();
-    // println!("{:?}", rootnode);
     walk_tree_bl(wsl, rootnode, 0);
 }
 
@@ -142,7 +136,6 @@ fn walk_tree_bl(wsl: &mut WorkSpaceList, rootnode: i3ipc::reply::Node, workspace
 
 pub fn find_window_workspace_from_i3(window_id: i64) -> i64 {
     let rootnode = get_tree();
-    // println!("{:?}", rootnode);
     return walk_to_resolve_windows_workspace(rootnode, window_id, 0);
 }
 
@@ -151,10 +144,9 @@ fn walk_to_resolve_windows_workspace(
     window_id: i64,
     current_workspace_id: i64,
 ) -> i64 {
-    let mut found :i64 = 0;
+    let mut found: i64 = 0;
     for node in rootnode.nodes {
         if found != 0 {
-            println!("exit");
             return found;
         }
         match node.nodetype {

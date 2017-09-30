@@ -1,23 +1,7 @@
 extern crate i3ipc;
-extern crate futures;
-extern crate tokio_core;
-extern crate core;
-use self::i3ipc::I3EventListener;
-use self::i3ipc::Subscription;
 use self::i3ipc::event::Event;
-use std::sync::Mutex;
-use std::ops::Deref;
-use self::futures::*;
 pub mod structures;
 mod treewalker;
-use std::error;
-use std::fmt;
-use std::io;
-use std::num;
-use self::tokio_core::reactor::Handle;
-use self::futures::stream::ForEach;
-use self::core::iter;
-use std::error::Error;
 use focuswatcher;
 
 pub fn on_i3_event(
@@ -36,7 +20,7 @@ pub fn on_i3_event(
                 i3ipc::event::inner::WorkspaceChange::Init => {
                     workspace_list.workspace_on_init(e.current.unwrap().id)
                 }
-                _ => println!("Urgent"),
+                _ => println!("Not Implemented"),
             }
         }
         Event::WindowEvent(e) => {

@@ -1,39 +1,27 @@
 extern crate nanomsg;
 extern crate std;
-use nanomsg::{Socket, Protocol, PollRequest, PollInOut};
-use std::io::{Read, Write};
-use focuswatcher::structures::WorkSpaceList;
-use std::sync::Mutex;
+extern crate futures;
 extern crate tokio_core;
 extern crate tokio_uds;
 extern crate i3ipc;
-use self::i3ipc::I3EventListener;
-use self::i3ipc::EventIterator;
-use self::i3ipc::Subscription;
-use self::i3ipc::event::Event;
+use std::io::{Read, Write};
+use std::sync::Mutex;
 use std::fs;
 use std::str;
-use std::io;
-extern crate futures;
-use self::futures::*;
-use std::thread;
-
-use self::futures::{Future, Stream};
-use self::tokio_core::io::read_to_end;
-use self::tokio_core::reactor::Core;
-// use self::tokio_uds::{UnixListener, UnixStream};
-use self::futures::future::Executor;
+use std::process;
 use std::os::unix::net::UnixStream as US;
 use std::os::unix::net::UnixListener;
-use focuswatcher::structures;
-use focuswatcher;
-use std::rc::Rc;
-use std::sync::{Arc};
+use self::i3ipc::I3EventListener;
+use self::i3ipc::Subscription;
+use self::futures::Stream;
+use self::futures::stream::iter_ok;
+use self::tokio_core::reactor::Core;
+use focuswatcher::on_i3_event;
+use focuswatcher::structures::WorkSpaceList;
 
-use std::cell::RefCell;
 static SOCKET_FILE: &str = "/tmp/switch-it.ipc";
 
-fn on_command(command: &String, workspace_list: &mut structures::WorkSpaceList) {
+fn on_command(command: &String, workspace_list: &mut WorkSpaceList) {
     if command.contains("w") {
         // println!("switching windows");
         workspace_list.last_workspace()
@@ -46,35 +34,33 @@ fn on_command(command: &String, workspace_list: &mut structures::WorkSpaceList) 
 pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
     let mut core = Core::new().unwrap();
 
-    let handle = core.handle();
-
     let mut listener = I3EventListener::connect().unwrap();
 
-
-    // subscribe to a couple events.
+    // subscribe to window and workspace event.
     let subs = [Subscription::Workspace, Subscription::Window];
     listener.subscribe(&subs).unwrap();
     let l = &mut listener.listen();
 
-    let mut stream = stream::iter_ok::<_, std::io::Error>(l);
+    let stream = iter_ok::<_, std::io::Error>(l);
 
     let server = stream.for_each(|event| {
         let mut wsl = workspace_list.lock().unwrap();
-        focuswatcher::on_i3_event(&mut wsl,event.unwrap());
+        on_i3_event(&mut wsl, event.unwrap());
         Ok(())
     });
-    core.run(server);
-
+    core.run(server).unwrap();
 }
 
 
-pub fn receiver(workspace_list:  &Mutex<WorkSpaceList>) {
+pub fn receiver(workspace_list: &Mutex<WorkSpaceList>) {
 
-    let listener = UnixListener::bind(&SOCKET_FILE)
-        .unwrap_or_else(|_|fs::remove_file(&SOCKET_FILE)
-                            .and(UnixListener::bind(&SOCKET_FILE)).unwrap());
+    let listener = UnixListener::bind(&SOCKET_FILE).unwrap_or_else(|_| {
+        fs::remove_file(&SOCKET_FILE)
+            .and(UnixListener::bind(&SOCKET_FILE))
+            .unwrap()
+    });
 
-    // accept connections and process them, spawning a new thread for each one
+    // accept connections and process them
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
@@ -82,10 +68,10 @@ pub fn receiver(workspace_list:  &Mutex<WorkSpaceList>) {
                 let mut command: String = String::new();
                 stream.read_to_string(&mut command).unwrap();
 
-                let mut wsl= workspace_list.lock().unwrap();
-                on_command(&command,&mut wsl)
+                let mut wsl = workspace_list.lock().unwrap();
+                on_command(&command, &mut wsl)
             }
-            Err(err) => {
+            Err(_) => {
                 /* connection failed */
                 break;
             }
@@ -94,8 +80,15 @@ pub fn receiver(workspace_list:  &Mutex<WorkSpaceList>) {
 }
 
 pub fn send(msg: String) {
-    print!("{:?}", msg);
-    let mut writer = US::connect(&SOCKET_FILE).unwrap();
+    match US::connect(&SOCKET_FILE).and_then(|mut writer| {
+        print!("{:?}", msg);
+        writer.write(msg.as_bytes())
+    }) {
+        Ok(_) => {}
+        Err(_) => {
+            println!("Daemon not running");
+            process::exit(0x0001);
+        }
+    }
 
-    writer.write(msg.as_bytes()).unwrap();
 }

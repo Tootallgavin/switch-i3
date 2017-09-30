@@ -1,9 +1,7 @@
 use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
 extern crate i3ipc;
-
 use super::treewalker::*;
-
 
 #[derive(Debug)]
 pub struct WorkSpaceList {
@@ -19,7 +17,7 @@ impl WorkSpaceList {
         };
         build_lists(&mut wsl);
         // debug!("{:?}", wsl);
-        info!("current focused {:?}", resolve_name(resolve_focused().unwrap()).unwrap());
+
         wsl.window_on_focus(resolve_focused().unwrap());
         return wsl;
     }
@@ -36,8 +34,8 @@ impl WorkSpaceList {
     }
 
     pub fn last_workspace(&self) {
-        println!("{:?}",self.workspace_list );
-        if self.workspace_list.len() > 2{
+        println!("{:?}", self.workspace_list);
+        if self.workspace_list.len() > 2 {
             let current_ws = self.workspaces.get(&self.workspace_list[1]).unwrap();
             let window_id = current_ws.window_list[0];
             send_command(window_id);
@@ -97,12 +95,12 @@ impl WorkSpaceList {
                         workspace.window_list.insert(0, window_id);
                     }
                     None => {
-                        println!("Ha");
+                        println!("Window not found in list");
                     }
                 };
             }
             None => {
-                println!("Ha2"); //then find_it!
+                println!("Window not found in list"); //then find_it!
             }
         }
     }
@@ -163,9 +161,8 @@ impl Eq for WorkSpace {}
 
 fn send_command(window_id: i64) {
     let ref command = format!("[con_id=\"{}\"] focus", window_id);
-    // println!("{:?}", command);
-    info!("Switching to container {:?}: {:?}", window_id, resolve_name(window_id));
-    let result = i3ipc::I3Connection::connect()
+
+    i3ipc::I3Connection::connect()
         .unwrap()
         .command(command)
         .unwrap();
