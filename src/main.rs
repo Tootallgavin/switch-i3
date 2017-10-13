@@ -1,5 +1,5 @@
 extern crate clap;
-mod focuswatcher;
+pub mod focuswatcher;
 mod sockethandler;
 use clap::{App, SubCommand};
 use std::thread;

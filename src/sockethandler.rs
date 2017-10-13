@@ -18,6 +18,7 @@ use self::futures::stream::iter_ok;
 use self::tokio_core::reactor::Core;
 use focuswatcher::on_i3_event;
 use focuswatcher::structures::WorkSpaceList;
+use std::time::Instant;
 
 static SOCKET_FILE: &str = "/tmp/switch-it.ipc";
 
@@ -33,7 +34,6 @@ fn on_command(command: &String, workspace_list: &mut WorkSpaceList) {
 
 pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
     let mut core = Core::new().unwrap();
-
     let mut listener = I3EventListener::connect().unwrap();
 
     // subscribe to window and workspace event.
@@ -44,8 +44,12 @@ pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
     let stream = iter_ok::<_, std::io::Error>(l);
 
     let server = stream.for_each(|event| {
+        let now = Instant::now();
+        // println!("start {:?}", now);
         let mut wsl = workspace_list.lock().unwrap();
         on_i3_event(&mut wsl, event.unwrap());
+        println!("end {:?}", now.elapsed());
+
         Ok(())
     });
     core.run(server).unwrap();

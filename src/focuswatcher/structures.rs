@@ -5,8 +5,8 @@ use super::treewalker::*;
 
 #[derive(Debug)]
 pub struct WorkSpaceList {
-    workspace_list: Vec<i64>,
-    workspaces: HashMap<i64, WorkSpace>,
+    pub workspace_list: Vec<i64>,
+    pub workspaces: HashMap<i64, WorkSpace>,
 }
 
 impl WorkSpaceList {
@@ -119,6 +119,7 @@ impl WorkSpaceList {
         }
     }
 
+    //need to move _all_ the windows of a container
     pub fn container_on_move(&mut self, container_id: i64) {
         self.window_on_close(container_id);
         match self.workspaces.get_mut(
@@ -142,7 +143,7 @@ impl WorkSpaceList {
 
 #[derive(Debug)]
 pub struct WorkSpace {
-    id: i64,
+    pub id: i64,
     pub window_list: Vec<i64>,
 }
 
@@ -167,3 +168,53 @@ fn send_command(window_id: i64) {
         .command(command)
         .unwrap();
 }
+
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//     use sockethandler;
+//     // for the following tests send a request and get the reponse.
+//     // response types are specific so often getting them at all indicates success.
+//     // can't do much better without mocking an i3 installation.
+//     extern crate x11_dl;
+//
+//     use std::ffi::CString;
+//     use std::mem;
+//     use std::os::raw::*;
+//     use std::ptr;
+//     use std::thread;
+//     use std::sync::{Arc, Mutex};
+//     use std::borrow::Borrow;
+//     use self::x11_dl::xlib;
+//
+//     struct WindowHelper {
+//         display: *mut x11_dl::xlib::_XDisplay,
+//         xlib: xlib::Xlib,
+//     }
+//
+//     impl WindowHelper {
+//         fn close_window(&self) {
+//             unsafe {
+//
+//                 // Shut down.
+//                 (self.xlib.XCloseDisplay)(self.display);
+//             }
+//         }
+//         fn build() -> WindowHelper {
+//             unsafe {
+//                 //       // Load Xlib library.
+//                 let xlib = xlib::Xlib::open().unwrap();
+//                 //
+//                 //       // Open display connection.
+//                 let display = (xlib.XOpenDisplay)(ptr::null());
+//
+//                 return WindowHelper {
+//                     display: display,
+//                     xlib: xlib,
+//                 };
+//             }
+//         }
+
+//
+//
+// }
