@@ -12,7 +12,7 @@ tokio-uds = "0.1.5"
 futures-cpupool = "0.1.6"
 log = "0.3"
 env_logger = "0.3"
-
+x11-dl = "*"
 [dependencies.i3ipc]
 git = "https://github.com/tmerr/i3ipc-rs.git"
 [dependencies.service-fn]
