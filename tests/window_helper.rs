@@ -10,6 +10,8 @@ use self::x11_dl::xlib;
 pub struct WindowHelper {
     display: *mut x11_dl::xlib::_XDisplay,
     xlib: xlib::Xlib,
+    // id: i64,
+    // name: &str,
 }
 
 impl WindowHelper {
@@ -30,6 +32,8 @@ impl WindowHelper {
             let mut wh = WindowHelper {
                 display: display,
                 xlib: xlib,
+                // id:0,
+                // name: ""
             };
 
             wh.open_window_with_name(name);
@@ -39,18 +43,17 @@ impl WindowHelper {
     }
     fn open_window_with_name(&mut self, name: &str) {
         unsafe {
-            //
             if self.display.is_null() {
                 panic!("XOpenDisplay failed");
             }
-            //
-            //       // Create window.
+
+            // Create window.
             let screen = (self.xlib.XDefaultScreen)(self.display);
             let root = (self.xlib.XRootWindow)(self.display, screen);
-            //
+
             let mut attributes: self::xlib::XSetWindowAttributes = mem::uninitialized();
-            attributes.background_pixel = (self.xlib.XWhitePixel)(self.display, screen);
-            //
+            attributes.background_pixel = (self.xlib.XBlackPixel)(self.display, screen);
+
             let window = (self.xlib.XCreateWindow)(
                 self.display,
                 root,
@@ -85,8 +88,7 @@ impl WindowHelper {
                 protocols.as_mut_ptr(),
                 protocols.len() as c_int,
             );
-            //
-            // // Show window.
+            // Show window.
             (self.xlib.XMapWindow)(self.display, window);
 
             // Main loop.

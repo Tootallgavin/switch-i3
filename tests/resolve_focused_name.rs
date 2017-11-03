@@ -7,7 +7,7 @@ use switch_it::focuswatcher::treewalker::*;
 use window_helper::WindowHelper;
 
 describe! top_level {
-        it "checks resolve focused and name" {
+        ignore "checks resolve focused and name" {
             const NAME: &'static str = "test124";
             let mut wh = WindowHelper::create_window_with_name(NAME);
             let ws = resolve_focused();
