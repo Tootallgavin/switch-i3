@@ -1,6 +1,6 @@
 use super::structures::*;
 use std::collections::hash_map::Iter;
-extern crate i3ipc;
+//TODO perform some calculus
 
 pub fn find_window(iter: Iter<i64, WorkSpace>, window_id: &i64) -> Option<(i64, usize)> {
     for (ws_id, ws) in iter {

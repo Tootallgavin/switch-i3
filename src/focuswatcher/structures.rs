@@ -1,6 +1,5 @@
 use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
-extern crate i3ipc;
 use super::treewalker::*;
 
 ///A representation of the i3 tree of nodes
