@@ -1,10 +1,8 @@
-extern crate nanomsg;
-extern crate std;
 extern crate futures;
 extern crate tokio_core;
 extern crate tokio_uds;
 extern crate i3ipc;
-use std::io::{Read, Write};
+use std::io::{Read, Write,Error};
 use std::sync::Mutex;
 use std::fs;
 use std::str;
@@ -13,9 +11,9 @@ use std::os::unix::net::UnixStream as US;
 use std::os::unix::net::UnixListener;
 use i3ipc::I3EventListener;
 use i3ipc::Subscription;
-use futures::Stream;
-use futures::stream::iter_ok;
-use tokio_core::reactor::Core;
+use self::futures::Stream;
+use self::futures::stream::iter_ok;
+use self::tokio_core::reactor::Core;
 use focuswatcher::on_i3_event;
 use focuswatcher::structures::WorkSpaceList;
 use std::time::Instant;
@@ -41,7 +39,7 @@ pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
     listener.subscribe(&subs).unwrap();
     let l = &mut listener.listen();
 
-    let stream = iter_ok::<_, std::io::Error>(l);
+    let stream = iter_ok::<_, Error>(l);
 
     let server = stream.for_each(|event| {
         let now = Instant::now();

@@ -1,3 +1,4 @@
+extern crate i3ipc;
 use super::structures::*;
 use std::collections::hash_map::Iter;
 //TODO perform some calculus

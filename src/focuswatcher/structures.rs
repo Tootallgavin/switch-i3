@@ -1,3 +1,4 @@
+extern crate i3ipc;
 use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
 use super::treewalker::*;
