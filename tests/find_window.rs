@@ -27,10 +27,10 @@ describe! find_window {
         let d = workspace_list.clone();
 
         let watch_handler = thread::spawn(move || watch(d.as_ref()));
-        thread::sleep_ms(1);
+        thread::sleep_ms(5);
     }
 
-        ignore "checks create and find window" {
+        it "checks create and find window" {
             let ref command = format!("workspace {}",BASE_WORKSPACE_NAME);
 
             send_command(command);
@@ -67,7 +67,7 @@ describe! find_window {
 
         //create n number of windows in
         //n number of workspaces randomly closing
-        it "checks close window and workspace" {
+        ignore "checks close window and workspace" {
             let mut count = 0;
             // workspace_list: Vec::new(),
             // workspaces: HashMap::new(),

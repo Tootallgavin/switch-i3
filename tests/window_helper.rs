@@ -7,6 +7,8 @@ use std::ptr;
 
 use self::x11_dl::xlib;
 
+///Helps with creating/closing simple X windows
+///for testing purposes
 pub struct WindowHelper {
     display: *mut x11_dl::xlib::_XDisplay,
     xlib: xlib::Xlib,

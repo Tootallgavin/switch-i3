@@ -26,6 +26,7 @@ pub fn build_lists(wsl: &mut WorkSpaceList) {
 
 pub fn resolve_name(id: i64) -> Option<String> {
     let rootnode = get_tree();
+
     return walk_tree_rn(rootnode, id);
 }
 
@@ -68,6 +69,7 @@ fn walk_tree_rn(node: i3ipc::reply::Node, id: i64) -> Option<String> {
 
 pub fn resolve_focused() -> Option<i64> {
     let rootnode = get_tree();
+
     return walk_tree_f(rootnode);
 }
 
@@ -77,6 +79,7 @@ fn walk_tree_f(node: i3ipc::reply::Node) -> Option<i64> {
         if id.is_some() {
             return id;
         }
+
         match node.nodetype {
             i3ipc::reply::NodeType::Output => {
                 id = walk_tree_f(node);
