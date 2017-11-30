@@ -1,3 +1,9 @@
+extern crate nanomsg;
+extern crate std;
+extern crate futures;
+extern crate tokio_core;
+extern crate tokio_uds;
+extern crate i3ipc;
 use std::io::{Read, Write};
 use std::sync::Mutex;
 use std::fs;
@@ -16,7 +22,6 @@ use std::time::Instant;
 
 static SOCKET_FILE: &str = "/tmp/switch-it.ipc";
 
-///perform the requested action
 fn on_command(command: &String, workspace_list: &mut WorkSpaceList) {
     if command.contains("w") {
         // println!("switching windows");
@@ -26,27 +31,33 @@ fn on_command(command: &String, workspace_list: &mut WorkSpaceList) {
         workspace_list.last_container()
     }
 }
-///Connects to i3's ipc and listens for workspace and window events
+
 pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
     let mut core = Core::new().unwrap();
     let mut listener = I3EventListener::connect().unwrap();
-    let subs = [Subscription::Workspace, Subscription::Window];
 
+    // subscribe to window and workspace event.
+    let subs = [Subscription::Workspace, Subscription::Window];
     listener.subscribe(&subs).unwrap();
-    
-    //transform the iterator into a stream
-    let stream = iter_ok::<_, std::io::Error>(&mut listener.listen());
+    let l = &mut listener.listen();
+
+    let stream = iter_ok::<_, std::io::Error>(l);
 
     let server = stream.for_each(|event| {
+        let now = Instant::now();
+        // println!("start {:?}", now);
         let mut wsl = workspace_list.lock().unwrap();
         on_i3_event(&mut wsl, event.unwrap());
+        println!("end {:?}", now.elapsed());
+
         Ok(())
     });
     core.run(server).unwrap();
 }
 
-///receives events from the socket file
+
 pub fn receiver(workspace_list: &Mutex<WorkSpaceList>) {
+
     let listener = UnixListener::bind(&SOCKET_FILE).unwrap_or_else(|_| {
         fs::remove_file(&SOCKET_FILE)
             .and(UnixListener::bind(&SOCKET_FILE))
@@ -72,7 +83,6 @@ pub fn receiver(workspace_list: &Mutex<WorkSpaceList>) {
     }
 }
 
-///send a messege via the socket file
 pub fn send(msg: String) {
     match US::connect(&SOCKET_FILE).and_then(|mut writer| {
         print!("{:?}", msg);
@@ -80,7 +90,6 @@ pub fn send(msg: String) {
     }) {
         Ok(_) => {}
         Err(_) => {
-            //TODO auto start daemon
             println!("Daemon not running");
             process::exit(0x0001);
         }

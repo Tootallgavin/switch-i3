@@ -2,14 +2,9 @@ use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
 use super::treewalker::*;
 
-///A representation of the i3 tree of nodes
 #[derive(Debug)]
 pub struct WorkSpaceList {
-    ///a list of all workspace
     pub workspace_list: Vec<i64>,
-    ///a hashmap whose key is a workspace id
-    ///and value is a list of all the windows
-    ///contained in the workspace 
     pub workspaces: HashMap<i64, WorkSpace>,
 }
 
@@ -20,46 +15,36 @@ impl WorkSpaceList {
             workspaces: HashMap::new(),
         };
         build_lists(&mut wsl);
-        // seth the current focused window to be at the head of the list
-        // wsl.window_on_focus(resolve_focused().unwrap());
+        // debug!("{:?}", wsl);
+
+        wsl.window_on_focus(resolve_focused().unwrap());
         return wsl;
     }
 
-    ///attempts to switch to the last focused window in the current workspace
-    ///if there are no other windows in the current workspace
-    ///it will call last_workspace
     pub fn last_container(&self) {
-        
         let current_ws = self.workspaces.get(&self.workspace_list[0]).unwrap();
-
+        // println!("{:?}", current_ws);
         if current_ws.window_list.len() > 2 {
             let window_id = current_ws.window_list[1];
             send_command(window_id);
-            debug!("last_container: {:?}", window_id);
         } else {
             self.last_workspace();
         }
     }
 
-    ///switches to the last focused window of the last focused workspace
     pub fn last_workspace(&self) {
+        println!("{:?}", self.workspace_list);
         if self.workspace_list.len() > 2 {
             let current_ws = self.workspaces.get(&self.workspace_list[1]).unwrap();
             let window_id = current_ws.window_list[0];
             send_command(window_id);
-            debug!("last_workspace: {:?} container: {:?}",current_ws, window_id);
         }
     }
 
     pub fn workspace_on_focus(&mut self, current_id: i64) {
-        debug!("workspace_on_focus: {:?}", current_id);
-        //delete the just focused workspace from the list
         self.workspace_list.retain(|&x| x != current_id);
-        //and move it to the front
         self.workspace_list.insert(0, current_id);
 
-        //if the workspace does not have a key in the hashmap
-        //create one and instantiate a workspace
         if !self.workspaces.contains_key(&current_id) {
             self.workspaces.insert(
                 current_id,
@@ -72,15 +57,10 @@ impl WorkSpaceList {
     }
 
     pub fn workspace_on_empty(&mut self, workspace_id: i64) {
-        debug!("workspace_on_empty: {:?}", workspace_id);
-        //remove workspace from our data
         self.workspace_list.retain(|&x| x != workspace_id);
-        self.workspaces.remove(workspace_id);
     }
 
-
     pub fn workspace_on_init(&mut self, workspace_id: i64) {
-        debug!("workspace_on_init: {:?}", workspace_id);
         self.workspaces.insert(
             workspace_id,
             WorkSpace {
@@ -92,10 +72,6 @@ impl WorkSpaceList {
     }
 
     pub fn window_on_close(&mut self, window_id: i64) {
-        debug!("window_on_close: {:?}", window_id);
-        //we only get the window ID, so we need to find the 
-        //the parent workspace so we can delete the window 
-        //from our data
         match find_window(self.workspaces.iter(), &window_id) {
             Some((ws_id, index)) => {
                 match self.workspaces.get_mut(&ws_id) {
@@ -110,7 +86,6 @@ impl WorkSpaceList {
     }
 
     pub fn window_on_focus(&mut self, window_id: i64) {
-        debug!("window_on_focus: {:?}", window_id);
         match find_window(self.workspaces.iter(), &window_id) {
             Some((ws_id, index)) => {
                 match self.workspaces.get_mut(&ws_id) {
@@ -119,20 +94,17 @@ impl WorkSpaceList {
                         workspace.window_list.insert(0, window_id);
                     }
                     None => {
-                        //then find_it!... maybe
-                        debug!("Window not found in list");
+                        println!("Window not found in list");
                     }
                 };
             }
             None => {
-                debug!("Window not found in list, creating"); //then find_it!
-                self.window_on_init(window_id,None);
+                println!("Window not found in list"); //then find_it!
             }
         }
     }
 
     pub fn window_on_init(&mut self, window_id: i64, workspace_id: Option<i64>) {
-        debug!("window_on_init: container:{:?} window:", workspace_id, window_id);
         let find_it = || find_window_workspace_from_i3(window_id);
         match self.workspaces.get_mut(
             &workspace_id.unwrap_or_else(find_it),
@@ -141,15 +113,13 @@ impl WorkSpaceList {
                 workspace.window_list.insert(0, window_id);
             }
             None => {
-                //this should be unreachable.... what happend to find_it
-                debug!("window init fail");
+                println!("window init fail");
             }
         }
     }
 
     //need to move _all_ the windows of a container
     pub fn container_on_move(&mut self, container_id: i64) {
-        debug!("container_on_move: {:?}", container_id);
         self.window_on_close(container_id);
         match self.workspaces.get_mut(
             &find_window_workspace_from_i3(container_id),
@@ -189,8 +159,6 @@ impl Hash for WorkSpace {
 }
 impl Eq for WorkSpace {}
 
-///sends a command to i3 
-///particularly what to focus on
 fn send_command(window_id: i64) {
     let ref command = format!("[con_id=\"{}\"] focus", window_id);
 
@@ -199,3 +167,53 @@ fn send_command(window_id: i64) {
         .command(command)
         .unwrap();
 }
+
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//     use sockethandler;
+//     // for the following tests send a request and get the reponse.
+//     // response types are specific so often getting them at all indicates success.
+//     // can't do much better without mocking an i3 installation.
+//     extern crate x11_dl;
+//
+//     use std::ffi::CString;
+//     use std::mem;
+//     use std::os::raw::*;
+//     use std::ptr;
+//     use std::thread;
+//     use std::sync::{Arc, Mutex};
+//     use std::borrow::Borrow;
+//     use self::x11_dl::xlib;
+//
+//     struct WindowHelper {
+//         display: *mut x11_dl::xlib::_XDisplay,
+//         xlib: xlib::Xlib,
+//     }
+//
+//     impl WindowHelper {
+//         fn close_window(&self) {
+//             unsafe {
+//
+//                 // Shut down.
+//                 (self.xlib.XCloseDisplay)(self.display);
+//             }
+//         }
+//         fn build() -> WindowHelper {
+//             unsafe {
+//                 //       // Load Xlib library.
+//                 let xlib = xlib::Xlib::open().unwrap();
+//                 //
+//                 //       // Open display connection.
+//                 let display = (xlib.XOpenDisplay)(ptr::null());
+//
+//                 return WindowHelper {
+//                     display: display,
+//                     xlib: xlib,
+//                 };
+//             }
+//         }
+
+//
+//
+// }

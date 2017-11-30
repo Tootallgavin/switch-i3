@@ -10,6 +10,17 @@ use clap::{App, SubCommand};
 use std::thread;
 use std::sync::{Arc, Mutex};
 
+fn set_up_watch() {
+    let workspace_list = Arc::new(Mutex::new(focuswatcher::structures::WorkSpaceList::build()));
+    let c = workspace_list.clone();
+    let d = workspace_list.clone();
+
+    let watch_handler = thread::spawn(move || sockethandler::watch(c.as_ref()));
+    let reciver_handler = thread::spawn(move || sockethandler::receiver(d.as_ref()));
+
+    watch_handler.join().unwrap();
+    reciver_handler.join().unwrap();
+}
 
 fn main() {
     let matches = App::new("switch-it")
@@ -30,19 +41,4 @@ fn main() {
     } else {
         sockethandler::send(String::from("c"));
     }
-}
-
-///spawns two processes 
-///one to watch for events from i3
-///one to watch for events from the socket file
-fn set_up_watch() {
-    let workspace_list = Arc::new(Mutex::new(focuswatcher::structures::WorkSpaceList::build()));
-    let c = workspace_list.clone();
-    let d = workspace_list.clone();
-
-    let watch_handler = thread::spawn(move || sockethandler::watch(c.as_ref()));
-    let reciver_handler = thread::spawn(move || sockethandler::receiver(d.as_ref()));
-
-    watch_handler.join().unwrap();
-    reciver_handler.join().unwrap();
 }
