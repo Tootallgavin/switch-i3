@@ -1,6 +1,10 @@
 extern crate i3ipc;
 use super::structures::*;
 use std::collections::hash_map::Iter;
+use std::boxed::Box;
+use std::borrow::BorrowMut;
+use std::mem;
+
 //TODO perform some calculus
 
 pub fn find_window(iter: Iter<i64, WorkSpace>, window_id: &i64) -> Option<(i64, usize)> {
@@ -29,6 +33,53 @@ pub fn resolve_name(id: i64) -> Option<String> {
     let rootnode = get_tree();
     return walk_tree_rn(rootnode, id);
 }
+
+struct TreeWalker{
+    rootnode: i3ipc::reply::Node,
+    output:  Option<i3ipc::reply::Node>,
+    workspace: Option<i3ipc::reply::Node>,
+    parent_containers: Vec<i3ipc::reply::Node>,
+    window: Option<i3ipc::reply::Node>
+}
+
+impl TreeWalker{
+    
+   
+}
+
+ fn walk_tree(mut treeWalker: TreeWalker) -> TreeWalker{
+        let mut node = get_tree();
+        treeWalker.rootnode= mem::replace(&mut node, treeWalker.rootnode);
+  
+        for node in node.nodes {
+            match node.nodetype {
+                i3ipc::reply::NodeType::Output => {
+                    treeWalker.output = Some(mem::replace(&mut get_tree(),node));
+                   treeWalker= walk_tree(treeWalker);
+                }
+                i3ipc::reply::NodeType::Workspace => {
+                   treeWalker.workspace = Some(mem::replace(&mut get_tree(),node));
+                  treeWalker= walk_tree(treeWalker);
+                }
+                i3ipc::reply::NodeType::Con => {
+                    match node.window {
+                        Some(_) => {
+                            treeWalker.window = Some(mem::replace(&mut get_tree(),node));
+                        }
+                        None => {
+                           treeWalker.workspace = Some(mem::replace(&mut get_tree(),node));
+                      treeWalker=     walk_tree(treeWalker);
+                        }
+                    }
+                }
+                i3ipc::reply::NodeType::FloatingCon => {
+                    println!("F");
+                }
+                _ => {}
+            }
+        }
+        treeWalker
+    }
 
 fn walk_tree_rn(node: i3ipc::reply::Node, id: i64) -> Option<String> {
     let mut name: Option<String> = None;
