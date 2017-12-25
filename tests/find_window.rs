@@ -39,7 +39,8 @@ describe! find_window {
 
             let ws = resolve_focused().unwrap();
             assert_eq!(BASE_WINDOW_NAME, resolve_name(ws).unwrap());
-            assert_eq!(BASE_WORKSPACE_NAME, resolve_name(find_window_workspace_from_i3(ws)).unwrap());
+            assert_eq!(BASE_WORKSPACE_NAME, resolve_name(find_window_workspace_from_i3(ws))
+            .unwrap());
             let mut wsl = workspace_list.as_ref().lock().unwrap();
 
             match find_window(wsl.workspaces.iter(), &ws) {
@@ -67,7 +68,7 @@ describe! find_window {
 
         //create n number of windows in
         //n number of workspaces randomly closing
-        it "checks close window and workspace" {
+        ignore "checks close window and workspace" {
             let mut count = 0;
             // workspace_list: Vec::new(),
             // workspaces: HashMap::new(),

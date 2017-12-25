@@ -17,6 +17,7 @@ stainless = "*"
 x11-dl = "*"
 
 [dependencies.i3ipc]
-git = "https://github.com/tmerr/i3ipc-rs.git"
+#git = "https://github.com/tmerr/i3ipc-rs.git"
+path = "../i3ipc-rs"
 [dependencies.service-fn]
 git = "https://github.com/tokio-rs/service-fn.git"

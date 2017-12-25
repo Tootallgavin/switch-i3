@@ -2,7 +2,7 @@ extern crate futures;
 extern crate tokio_core;
 extern crate tokio_uds;
 extern crate i3ipc;
-use std::io::{Read, Write,Error};
+use std::io::{Read, Write, Error};
 use std::sync::Mutex;
 use std::fs;
 use std::str;

@@ -1,5 +1,5 @@
 extern crate i3ipc;
-use i3ipc::event::{self,Event};
+use i3ipc::event::{self, Event};
 pub mod structures;
 pub mod treewalker;
 use focuswatcher;

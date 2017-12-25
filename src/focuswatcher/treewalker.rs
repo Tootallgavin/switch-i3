@@ -5,8 +5,6 @@ use std::boxed::Box;
 use std::borrow::BorrowMut;
 use std::mem;
 
-//TODO perform some calculus
-
 pub fn find_window(iter: Iter<i64, WorkSpace>, window_id: &i64) -> Option<(i64, usize)> {
     for (ws_id, ws) in iter {
         let mut count: usize = 0;
@@ -20,92 +18,163 @@ pub fn find_window(iter: Iter<i64, WorkSpace>, window_id: &i64) -> Option<(i64, 
     return None;
 }
 
+pub fn build_lists(wsl: &mut WorkSpaceList) {
+    let mut treeWalker = TreeWalker::new();
+
+    let mut logic = &mut |mut treeWalker: TreeWalker<i64>| -> TreeWalker<i64> {
+        if treeWalker.workspace.is_some() && treeWalker.window.is_none() {
+            let workspace = treeWalker.workspace.clone().unwrap();
+            wsl.workspace_on_init(workspace.id);
+        }
+
+        if treeWalker.window.is_some() {
+            let window = treeWalker.window.clone().unwrap();
+            let workspace = treeWalker.workspace.clone().unwrap();
+            wsl.window_on_init(window.id, Some(workspace.id));
+        }
+
+        return treeWalker;
+    };
+
+    walk_tree(treeWalker, logic);
+}
+
+pub fn resolve_name(id: i64) -> Option<String> {
+    let mut treeWalker = TreeWalker::new();
+
+    let mut logic = &mut |mut treeWalker: TreeWalker<String>| -> TreeWalker<String> {
+        if treeWalker.workspace.is_some() && treeWalker.window.is_none() {
+            let workspace = treeWalker.workspace.clone().unwrap();
+            if workspace.id == id {
+                treeWalker.result = workspace.name;
+            }
+        }
+
+        if treeWalker.window.is_some() {
+            let window = treeWalker.window.clone().unwrap();
+            if window.id == id {
+                treeWalker.result = window.name;
+            }
+        }
+
+        return treeWalker;
+    };
+
+    walk_tree(treeWalker, logic).result
+}
+
+pub fn resolve_focused() -> Option<i64> {
+    let mut treeWalker = TreeWalker::new();
+
+    let mut logic = &mut |mut treeWalker: TreeWalker<i64>| -> TreeWalker<i64> {
+        if treeWalker.window.is_some() {
+            let window = treeWalker.window.clone().unwrap();
+            if window.focused {
+                treeWalker.result = Some(window.id);
+            }
+        }
+
+        return treeWalker;
+    };
+
+    walk_tree(treeWalker, logic).result
+}
+
+pub fn find_window_workspace_from_i3(window_id: i64) -> i64 {
+    let mut treeWalker = TreeWalker::new();
+
+    let mut logic = &mut |mut treeWalker: TreeWalker<i64>| -> TreeWalker<i64> {
+        if treeWalker.window.is_some() {
+            let window = treeWalker.window.clone().unwrap();
+            let workspace = treeWalker.workspace.clone().unwrap();
+            if window.id == window_id {
+                treeWalker.result = Some(workspace.id);
+            }
+        }
+
+        return treeWalker;
+    };
+
+    walk_tree(treeWalker, logic).result.unwrap()
+}
+
 fn get_tree() -> i3ipc::reply::Node {
     return i3ipc::I3Connection::connect().unwrap().get_tree().unwrap();
 }
 
-pub fn build_lists(wsl: &mut WorkSpaceList) {
-    let rootnode = get_tree();
-    walk_tree_bl(wsl, rootnode, 0);
-}
-
-pub fn resolve_name(id: i64) -> Option<String> {
-    let rootnode = get_tree();
-    return walk_tree_rn(rootnode, id);
-}
-
-struct TreeWalker{
+// #[derive(Default)]
+struct TreeWalker<T> {
     rootnode: i3ipc::reply::Node,
-    output:  Option<i3ipc::reply::Node>,
+    nextnode: Option<i3ipc::reply::Node>,
+    output: Option<i3ipc::reply::Node>,
     workspace: Option<i3ipc::reply::Node>,
-    parent_containers: Vec<i3ipc::reply::Node>,
-    window: Option<i3ipc::reply::Node>
+    parent_containers: Vec<i3ipc::reply::Node>, // the outer-most (i.e. the first) parent is 0
+    window: Option<i3ipc::reply::Node>,
+    result: Option<T>,
 }
 
-impl TreeWalker{
-    
-   
-}
+impl<T> TreeWalker<T> {
+    fn new() -> TreeWalker<T> {
+        let tree = get_tree();
 
- fn walk_tree(mut treeWalker: TreeWalker) -> TreeWalker{
-        let mut node = get_tree();
-        treeWalker.rootnode= mem::replace(&mut node, treeWalker.rootnode);
-  
-        for node in node.nodes {
-            match node.nodetype {
-                i3ipc::reply::NodeType::Output => {
-                    treeWalker.output = Some(mem::replace(&mut get_tree(),node));
-                   treeWalker= walk_tree(treeWalker);
-                }
-                i3ipc::reply::NodeType::Workspace => {
-                   treeWalker.workspace = Some(mem::replace(&mut get_tree(),node));
-                  treeWalker= walk_tree(treeWalker);
-                }
-                i3ipc::reply::NodeType::Con => {
-                    match node.window {
-                        Some(_) => {
-                            treeWalker.window = Some(mem::replace(&mut get_tree(),node));
-                        }
-                        None => {
-                           treeWalker.workspace = Some(mem::replace(&mut get_tree(),node));
-                      treeWalker=     walk_tree(treeWalker);
-                        }
-                    }
-                }
-                i3ipc::reply::NodeType::FloatingCon => {
-                    println!("F");
-                }
-                _ => {}
-            }
+        TreeWalker::<T> {
+            rootnode: tree.clone(),
+            nextnode: Some(tree),
+            output: None,
+            workspace: None,
+            parent_containers: Vec::new(),
+            window: None,
+            result: None,
         }
-        treeWalker
     }
+}
 
-fn walk_tree_rn(node: i3ipc::reply::Node, id: i64) -> Option<String> {
-    let mut name: Option<String> = None;
+fn walk_tree<T>(
+    mut treeWalker: TreeWalker<T>,
+    onNode: &mut FnMut(TreeWalker<T>) -> TreeWalker<T>,
+) -> TreeWalker<T> {
+    let mut node = treeWalker.nextnode.clone().unwrap();
+
     for node in node.nodes {
-        if name.is_some() {
-            return name;
+        treeWalker.nextnode = Some(node.clone());
+        // println!("g");
+        if treeWalker.result.is_some() {
+            return treeWalker;
         }
+
         match node.nodetype {
             i3ipc::reply::NodeType::Output => {
-                name = walk_tree_rn(node, id);
+                // println!("Output");
+                treeWalker.output = Some(node);
+                treeWalker = walk_tree(treeWalker, onNode);
+                treeWalker.output = None;
             }
             i3ipc::reply::NodeType::Workspace => {
-                if id == node.id {
-                    return node.name;
-                }
-                name = walk_tree_rn(node, id);
+                // println!("Workspace");
+                treeWalker.workspace = Some(node.clone());
+                treeWalker = (onNode)(treeWalker);
+                treeWalker = walk_tree(treeWalker, onNode);
+                treeWalker.workspace = None;
+
             }
             i3ipc::reply::NodeType::Con => {
                 match node.window {
                     Some(_) => {
-                        if id == node.id {
-                            return node.name;
-                        }
+                        // println!("Window");
+                        treeWalker.window = Some(node.clone());
+                        treeWalker = (onNode)(treeWalker);
+                        treeWalker.window = None;
+
                     }
                     None => {
-                        return walk_tree_rn(node, id);
+                        // println!("Con");
+                        // if()
+                        treeWalker.parent_containers.push(node.clone());
+                        treeWalker = (onNode)(treeWalker);
+                        treeWalker = walk_tree(treeWalker, onNode);
+                        treeWalker.output = None;
+                        treeWalker.parent_containers.pop();
+
                     }
                 }
             }
@@ -115,118 +184,7 @@ fn walk_tree_rn(node: i3ipc::reply::Node, id: i64) -> Option<String> {
             _ => {}
         }
     }
-    return name;
+
+    treeWalker
 }
 
-pub fn resolve_focused() -> Option<i64> {
-    let rootnode = get_tree();
-    return walk_tree_f(rootnode);
-}
-
-fn walk_tree_f(node: i3ipc::reply::Node) -> Option<i64> {
-    let mut id: Option<i64> = None;
-    for node in node.nodes {
-        if id.is_some() {
-            return id;
-        }
-        match node.nodetype {
-            i3ipc::reply::NodeType::Output => {
-                id = walk_tree_f(node);
-            }
-            i3ipc::reply::NodeType::Workspace => {
-                id = walk_tree_f(node);
-            }
-            i3ipc::reply::NodeType::Con => {
-                match node.window {
-                    Some(_) => {
-                        if node.focused {
-                            return Some(node.id);
-                        }
-                    }
-                    None => {
-                        return walk_tree_f(node);
-                    }
-                }
-            }
-            i3ipc::reply::NodeType::FloatingCon => {
-                println!("F");
-            }
-            _ => {}
-        }
-    }
-    return id;
-}
-
-fn walk_tree_bl(wsl: &mut WorkSpaceList, rootnode: i3ipc::reply::Node, workspace_id: i64) {
-    for node in rootnode.nodes {
-        match node.nodetype {
-            i3ipc::reply::NodeType::Output => {
-                walk_tree_bl(wsl, node, workspace_id);
-            }
-            i3ipc::reply::NodeType::Workspace => {
-                let c = node.id;
-                wsl.workspace_on_init(node.id);
-                walk_tree_bl(wsl, node, c);
-            }
-            i3ipc::reply::NodeType::Con => {
-                match node.window {
-                    Some(_) => {
-                        wsl.window_on_init(node.id, Some(workspace_id));
-                    }
-                    None => {
-                        walk_tree_bl(wsl, node, workspace_id);
-                    }
-                }
-            }
-            i3ipc::reply::NodeType::FloatingCon => {
-                println!("F");
-            }
-            _ => {}
-        }
-    }
-}
-
-pub fn find_window_workspace_from_i3(window_id: i64) -> i64 {
-    let rootnode = get_tree();
-    return walk_to_resolve_windows_workspace(rootnode, window_id, 0);
-}
-
-fn walk_to_resolve_windows_workspace(
-    rootnode: i3ipc::reply::Node,
-    window_id: i64,
-    current_workspace_id: i64,
-) -> i64 {
-    let mut found: i64 = 0;
-    for node in rootnode.nodes {
-        if found != 0 {
-            return found;
-        }
-        match node.nodetype {
-            i3ipc::reply::NodeType::Output => {
-                found = walk_to_resolve_windows_workspace(node, window_id, current_workspace_id);
-            }
-            i3ipc::reply::NodeType::Workspace => {
-                let c = node.id;
-                found = walk_to_resolve_windows_workspace(node, window_id, c);
-            }
-            i3ipc::reply::NodeType::Con => {
-                match node.window {
-                    Some(_) => {
-                        if node.id == window_id {
-                            return current_workspace_id;
-                        }
-                    }
-                    None => {
-                        return walk_to_resolve_windows_workspace(
-                            node,
-                            window_id,
-                            current_workspace_id,
-                        );
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    return found;
-}
