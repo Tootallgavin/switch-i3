@@ -42,12 +42,8 @@ pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
     let stream = iter_ok::<_, Error>(l);
 
     let server = stream.for_each(|event| {
-        let now = Instant::now();
-        // println!("start {:?}", now);
         let mut wsl = workspace_list.lock().unwrap();
         on_i3_event(&mut wsl, event.unwrap());
-        println!("end {:?}", now.elapsed());
-
         Ok(())
     });
     core.run(server).unwrap();
@@ -92,5 +88,4 @@ pub fn send(msg: String) {
             process::exit(0x0001);
         }
     }
-
 }

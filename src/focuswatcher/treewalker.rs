@@ -133,7 +133,8 @@ fn walk_tree<T>(
     mut treeWalker: TreeWalker<T>,
     onNode: &mut FnMut(TreeWalker<T>) -> TreeWalker<T>,
 ) -> TreeWalker<T> {
-    let mut node = treeWalker.nextnode.clone().unwrap();
+    let mut node = treeWalker.nextnode.unwrap();
+    treeWalker.nextnode = None;
 
     for node in node.nodes {
         treeWalker.nextnode = Some(node.clone());
@@ -151,7 +152,7 @@ fn walk_tree<T>(
             }
             i3ipc::reply::NodeType::Workspace => {
                 // println!("Workspace");
-                treeWalker.workspace = Some(node.clone());
+                treeWalker.workspace = Some(node);
                 treeWalker = (onNode)(treeWalker);
                 treeWalker = walk_tree(treeWalker, onNode);
                 treeWalker.workspace = None;
@@ -161,7 +162,7 @@ fn walk_tree<T>(
                 match node.window {
                     Some(_) => {
                         // println!("Window");
-                        treeWalker.window = Some(node.clone());
+                        treeWalker.window = Some(node);
                         treeWalker = (onNode)(treeWalker);
                         treeWalker.window = None;
 
@@ -169,7 +170,7 @@ fn walk_tree<T>(
                     None => {
                         // println!("Con");
                         // if()
-                        treeWalker.parent_containers.push(node.clone());
+                        treeWalker.parent_containers.push(node);
                         treeWalker = (onNode)(treeWalker);
                         treeWalker = walk_tree(treeWalker, onNode);
                         treeWalker.output = None;
@@ -187,4 +188,3 @@ fn walk_tree<T>(
 
     treeWalker
 }
-

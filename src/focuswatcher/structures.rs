@@ -25,7 +25,7 @@ impl WorkSpaceList {
     pub fn last_container(&self) {
         let current_ws = self.workspaces.get(&self.workspace_list[0]).unwrap();
         // println!("{:?}", current_ws);
-        if current_ws.window_list.len() > 2 {
+        if current_ws.window_list.len() > 1 {
             let window_id = current_ws.window_list[1];
             send_command(window_id);
         } else {
@@ -95,12 +95,13 @@ impl WorkSpaceList {
                         workspace.window_list.insert(0, window_id);
                     }
                     None => {
-                        println!("Window not found in list");
+                        println!("Window not found in list: inner");
                     }
                 };
             }
             None => {
-                println!("Window not found in list"); //then find_it!
+                println!("Window not found in list: outer"); //then find_it!
+                self.window_on_init(window_id, None);
             }
         }
     }
@@ -168,53 +169,3 @@ fn send_command(window_id: i64) {
         .command(command)
         .unwrap();
 }
-
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     use sockethandler;
-//     // for the following tests send a request and get the reponse.
-//     // response types are specific so often getting them at all indicates success.
-//     // can't do much better without mocking an i3 installation.
-//     extern crate x11_dl;
-//
-//     use std::ffi::CString;
-//     use std::mem;
-//     use std::os::raw::*;
-//     use std::ptr;
-//     use std::thread;
-//     use std::sync::{Arc, Mutex};
-//     use std::borrow::Borrow;
-//     use self::x11_dl::xlib;
-//
-//     struct WindowHelper {
-//         display: *mut x11_dl::xlib::_XDisplay,
-//         xlib: xlib::Xlib,
-//     }
-//
-//     impl WindowHelper {
-//         fn close_window(&self) {
-//             unsafe {
-//
-//                 // Shut down.
-//                 (self.xlib.XCloseDisplay)(self.display);
-//             }
-//         }
-//         fn build() -> WindowHelper {
-//             unsafe {
-//                 //       // Load Xlib library.
-//                 let xlib = xlib::Xlib::open().unwrap();
-//                 //
-//                 //       // Open display connection.
-//                 let display = (xlib.XOpenDisplay)(ptr::null());
-//
-//                 return WindowHelper {
-//                     display: display,
-//                     xlib: xlib,
-//                 };
-//             }
-//         }
-
-//
-//
-// }
