@@ -1,8 +1,8 @@
+extern crate clap;
 extern crate futures;
+extern crate i3ipc;
 extern crate tokio_core;
 extern crate tokio_uds;
-extern crate i3ipc;
-extern crate clap;
 pub mod focuswatcher;
 mod sockethandler;
 use clap::{App, SubCommand};

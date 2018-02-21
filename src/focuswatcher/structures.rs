@@ -73,7 +73,7 @@ impl WorkSpaceList {
     }
 
     pub fn window_on_close(&mut self, window_id: i64) {
-        match find_window(self.workspaces.iter(), &window_id) {
+        match self.find_window(&window_id) {
             Some((ws_id, index)) => {
                 match self.workspaces.get_mut(&ws_id) {
                     Some(workspace) => {
@@ -87,7 +87,7 @@ impl WorkSpaceList {
     }
 
     pub fn window_on_focus(&mut self, window_id: i64) {
-        match find_window(self.workspaces.iter(), &window_id) {
+        match self.find_window(&window_id) {
             Some((ws_id, index)) => {
                 match self.workspaces.get_mut(&ws_id) {
                     Some(workspace) => {
@@ -108,9 +108,9 @@ impl WorkSpaceList {
 
     pub fn window_on_init(&mut self, window_id: i64, workspace_id: Option<i64>) {
         let find_it = || find_window_workspace_from_i3(window_id);
-        match self.workspaces.get_mut(
-            &workspace_id.unwrap_or_else(find_it),
-        ) {
+        match self.workspaces
+            .get_mut(&workspace_id.unwrap_or_else(find_it))
+        {
             Some(workspace) => {
                 workspace.window_list.insert(0, window_id);
             }
@@ -123,9 +123,9 @@ impl WorkSpaceList {
     //need to move _all_ the windows of a container
     pub fn container_on_move(&mut self, container_id: i64) {
         self.window_on_close(container_id);
-        match self.workspaces.get_mut(
-            &find_window_workspace_from_i3(container_id),
-        ) {
+        match self.workspaces
+            .get_mut(&find_window_workspace_from_i3(container_id))
+        {
             Some(workspace) => {
                 workspace.window_list.insert(0, container_id);
                 let index = self.workspace_list
@@ -139,6 +139,19 @@ impl WorkSpaceList {
                 println!("container move fail");
             }
         }
+    }
+
+    fn find_window(&mut self, window_id: &i64) -> Option<(i64, usize)> {
+        for (ws_id, ws) in self.workspaces.iter() {
+            let mut count: usize = 0;
+            for w in &ws.window_list {
+                if w == window_id {
+                    return Some((*ws_id, count));
+                }
+                count += 1;
+            }
+        }
+        return None;
     }
 }
 
@@ -166,6 +179,6 @@ fn send_command(window_id: i64) {
 
     i3ipc::I3Connection::connect()
         .unwrap()
-        .command(command)
+        .run_command(command)
         .unwrap();
 }

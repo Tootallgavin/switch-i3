@@ -1,8 +1,8 @@
 extern crate futures;
+extern crate i3ipc;
 extern crate tokio_core;
 extern crate tokio_uds;
-extern crate i3ipc;
-use std::io::{Read, Write, Error};
+use std::io::{Error, Read, Write};
 use std::sync::Mutex;
 use std::fs;
 use std::str;
@@ -16,7 +16,6 @@ use self::futures::stream::iter_ok;
 use self::tokio_core::reactor::Core;
 use focuswatcher::on_i3_event;
 use focuswatcher::structures::WorkSpaceList;
-use std::time::Instant;
 
 static SOCKET_FILE: &str = "/tmp/switch-it.ipc";
 
@@ -49,9 +48,7 @@ pub fn watch(workspace_list: &Mutex<WorkSpaceList>) {
     core.run(server).unwrap();
 }
 
-
 pub fn receiver(workspace_list: &Mutex<WorkSpaceList>) {
-
     let listener = UnixListener::bind(&SOCKET_FILE).unwrap_or_else(|_| {
         fs::remove_file(&SOCKET_FILE)
             .and(UnixListener::bind(&SOCKET_FILE))

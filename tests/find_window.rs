@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![cfg_attr(test, plugin(stainless))]
-extern crate switch_it;
 extern crate i3ipc;
+extern crate switch_it;
 mod window_helper;
 use switch_it::focuswatcher::structures::*;
 use switch_it::focuswatcher::treewalker::*;
