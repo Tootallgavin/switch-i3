@@ -1,7 +1,8 @@
-//! Abstraction and function for walking the i3-node tree.
+//! Abstraction and functions for walking the i3-node tree.
 
 extern crate i3ipc;
 use super::structures::*;
+use std::mem;
 
 struct TreeWalker<T> {
     // rootnode: i3ipc::reply::Node,
@@ -38,20 +39,17 @@ fn walk_tree<T>(
 
     for node in node.nodes {
         tree_walker.nextnode = Some(node.clone());
-        // println!("g");
         if tree_walker.result.is_some() {
             return tree_walker;
         }
 
         match node.nodetype {
             i3ipc::reply::NodeType::Output => {
-                // println!("Output");
                 tree_walker.output = Some(node);
                 tree_walker = walk_tree(tree_walker, on_node);
                 tree_walker.output = None;
             }
             i3ipc::reply::NodeType::Workspace => {
-                // println!("Workspace");
                 tree_walker.workspace = Some(node);
                 tree_walker = (on_node)(tree_walker);
                 tree_walker = walk_tree(tree_walker, on_node);
@@ -60,18 +58,15 @@ fn walk_tree<T>(
             i3ipc::reply::NodeType::Con => {
                 match node.window {
                     Some(_) => {
-                        // println!("Window");
                         tree_walker.window = Some(node);
                         tree_walker = (on_node)(tree_walker);
                         tree_walker.window = None;
                     }
                     None => {
-                        // println!("Con");
-                        // if()
-                        tree_walker.parent_containers.push(node);
                         tree_walker = (on_node)(tree_walker);
+                        tree_walker.parent_containers.push(node);
                         tree_walker = walk_tree(tree_walker, on_node);
-                        tree_walker.output = None;
+                        // tree_walker.output = None; //should this be here?
                         tree_walker.parent_containers.pop();
                     }
                 }
@@ -92,6 +87,7 @@ pub fn build_lists(wsl: &mut WorkSpaceList) {
     let logic = &mut |tree_walker: TreeWalker<i64>| -> TreeWalker<i64> {
         if tree_walker.workspace.is_some() && tree_walker.window.is_none() {
             let workspace = tree_walker.workspace.clone().unwrap();
+ 
             wsl.workspace_on_init(workspace.id);
         }
 

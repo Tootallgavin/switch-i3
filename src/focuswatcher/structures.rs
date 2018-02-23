@@ -3,6 +3,10 @@ use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
 use super::treewalker::*;
 
+///structure to help keep track of the order of focus of windows and workspaces by i3-id
+/// 0 is the currently focused node 
+/// 1 is the previously focused node
+/// n is the last node focused; where n is length of the array -1
 #[derive(Debug)]
 pub struct WorkSpaceList {
     pub workspace_list: Vec<i64>,
@@ -10,18 +14,20 @@ pub struct WorkSpaceList {
 }
 
 impl WorkSpaceList {
+    ///Builds the WorkSpaceList and sets the currently focused window
+    ///to position 0
+    //TODO: i3 maintains an ordered list of nodes focused, use this to build list
     pub fn build() -> WorkSpaceList {
         let mut wsl = WorkSpaceList {
             workspace_list: Vec::new(),
             workspaces: HashMap::new(),
         };
         build_lists(&mut wsl);
-        // debug!("{:?}", wsl);
-
+        
         wsl.window_on_focus(resolve_focused().unwrap());
         return wsl;
     }
-
+    ///focuses on the previous window in the current workspace
     pub fn last_container(&self) {
         let current_ws = self.workspaces.get(&self.workspace_list[0]).unwrap();
         // println!("{:?}", current_ws);
@@ -32,7 +38,7 @@ impl WorkSpaceList {
             self.last_workspace();
         }
     }
-
+    ///focuses on the previous window on the previous workspace
     pub fn last_workspace(&self) {
         println!("{:?}", self.workspace_list);
         if self.workspace_list.len() > 2 {
@@ -120,7 +126,7 @@ impl WorkSpaceList {
         }
     }
 
-    //need to move _all_ the windows of a container
+    //TODO: need to move _all_ the windows of a container
     pub fn container_on_move(&mut self, container_id: i64) {
         self.window_on_close(container_id);
         match self.workspaces
@@ -141,7 +147,7 @@ impl WorkSpaceList {
         }
     }
 
-    fn find_window(&mut self, window_id: &i64) -> Option<(i64, usize)> {
+    fn find_window(& self, window_id: &i64) -> Option<(i64, usize)> {
         for (ws_id, ws) in self.workspaces.iter() {
             let mut count: usize = 0;
             for w in &ws.window_list {
@@ -166,6 +172,7 @@ impl PartialEq for WorkSpace {
         self.id == other.id
     }
 }
+
 impl Hash for WorkSpace {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
@@ -174,6 +181,7 @@ impl Hash for WorkSpace {
 }
 impl Eq for WorkSpace {}
 
+///sends a command to i3 telling what node to focus on
 fn send_command(window_id: i64) {
     let ref command = format!("[con_id=\"{}\"] focus", window_id);
 

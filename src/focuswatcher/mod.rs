@@ -3,7 +3,7 @@ use i3ipc::event::Event;
 pub mod structures;
 pub mod treewalker;
 use focuswatcher;
-
+///decides what to do with the event recived from i3
 pub fn on_i3_event(
     workspace_list: &mut structures::WorkSpaceList,
     event: self::focuswatcher::i3ipc::event::Event,
