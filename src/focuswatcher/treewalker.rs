@@ -2,7 +2,6 @@
 
 extern crate i3ipc;
 use super::structures::*;
-use std::mem;
 
 struct TreeWalker<T> {
     // rootnode: i3ipc::reply::Node,
